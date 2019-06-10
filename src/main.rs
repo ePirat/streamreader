@@ -3,45 +3,21 @@ use exitcode;
 use std::process;
 use std::env;
 use std::fs;
+use std::path::PathBuf;
 use std::io::Read;
 use std::io::Seek;
 use std::io::SeekFrom;
 
 use bitreader::BitReader;
+use structopt::StructOpt;
 
+#[derive(Debug, StructOpt)]
 struct CliArgs {
-    filepath: String,
+    /// Input File
+    filepath: PathBuf,
+    /// Offset within the input file
+    #[structopt(default_value = "0")]
     offset: u32,
-}
-
-fn parse_args(args : Vec<String>) -> Result<CliArgs, &'static str> {
-    let res : CliArgs;
-    match args.len() {
-        1 => {
-            return Err("missing required file argument");
-        },
-        2 => {
-            res = CliArgs {
-                filepath: args[1].clone(),
-                offset: 0,
-            }
-        },
-        3 => {
-            res = CliArgs {
-                filepath: args[1].clone(),
-                offset: match args[2].parse() {
-                    Ok(n) => n,
-                    Err(_) => {
-                        return Err("offset argument not an integer");
-                    },
-                },
-            }
-        },
-        _ => {
-            return Err("invalid number of arguments");
-        }
-    }
-    return Ok(res);
 }
 
 fn find_startcode(buffer : [u8; 9]) -> Option<usize> {
@@ -164,18 +140,9 @@ fn peek_header(mut file: &fs::File) -> Option<ADTSHeader> {
 
 fn main() {
     // Argument handling
-    let args: Vec<String> = env::args().collect();
-    let toolname = args[0].clone();
+    let opts = CliArgs::from_args();
 
-    let opts : CliArgs = match parse_args(args) {
-        Ok(n) => n,
-        Err(msg) => {
-            eprintln!("error: {0}", msg);
-            eprintln!("usage: {0} [file] <offset>", toolname);
-            process::exit(exitcode::USAGE);
-        },
-    };
-    println!("Reading file '{0}' starting at {1}", opts.filepath, opts.offset);
+    println!("Reading file '{0}' starting at {1}", opts.filepath.display(), opts.offset);
 
     let mut file = match fs::OpenOptions::new().read(true).open(opts.filepath) {
         Ok(result) => result,
