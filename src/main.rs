@@ -41,7 +41,7 @@ const ADTS_HDR_MAX_LEN: usize = 9;
 
 fn find_startcode(buf: [u8; ADTS_HDR_MAX_LEN]) -> Option<usize> {
     buf.windows(2)
-        .position(|b| b[0] == 0xFF && (b[1] & 0xF0) == 0xF0)
+        .position(|b| (b[0] == 0xFF) && ((b[1] & 0xF0) == 0xF0))
 }
 
 fn seek_startcode(mut file: &fs::File) -> std::io::Result<u64> {
@@ -52,6 +52,7 @@ fn seek_startcode(mut file: &fs::File) -> std::io::Result<u64> {
         let startcode_pos = match find_startcode(buffer) {
             Some(n) => n,
             None => {
+                //println!("Not found anything at {0}", )
                 file.seek(SeekFrom::Current(ADTS_HDR_MAX_LEN as i64 - 4))?;
                 continue;
             }
@@ -201,6 +202,14 @@ fn main() {
             process::exit(exitcode::NOINPUT);
         }
     };
+
+    match file.seek(SeekFrom::Current(opts.offset as i64)) {
+        Ok(_) => {}
+        Err(err) => {
+            eprintln!("error: failed seeking to offset: {}", opts.offset);
+            process::exit(exitcode::DATAERR);
+        }
+    }
 
     // Read header
     match seek_startcode(&file) {
